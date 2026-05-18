@@ -51,7 +51,10 @@ export const createDonationOrder = asyncHandler(async (req, res) => {
   });
 
   if (!orderResult.success) {
-    return res.status(400).json(orderResult);
+    return res.status(400).json({
+      success: false,
+      message: orderResult.error || 'Unable to create Razorpay order',
+    });
   }
 
   res.status(201).json({
@@ -214,6 +217,23 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Failed to verify payment' });
   }
 
+  // Fetch order details from Razorpay so we can resolve booking/donation reference
+  const orderDetails = await PaymentService.getOrderDetails(orderId);
+
+  if (!orderDetails.success) {
+    return res.status(400).json({ success: false, message: 'Failed to fetch order details' });
+  }
+
+  const notes = orderDetails.data.notes || {};
+  const referenceId = notes.donationId || notes.bookingId;
+  const customerName = notes.donorName || notes.customerName || '';
+  const customerEmail = notes.donorEmail || notes.customerEmail || '';
+  const customerPhone = notes.donorPhone || notes.customerPhone || '';
+
+  if (!referenceId) {
+    return res.status(400).json({ success: false, message: 'Missing payment reference information' });
+  }
+
   // Create or update payment record
   const payment = await Payment.findOneAndUpdate(
     { razorpayOrderId: orderId },
@@ -224,14 +244,19 @@ export const verifyPayment = asyncHandler(async (req, res) => {
       paidAt: new Date(),
       amount: Math.ceil(paymentDetails.data.amount / 100),
       paymentType,
+      referenceId,
+      customerName,
+      customerEmail,
+      customerPhone,
+      notes: JSON.stringify(notes),
     },
-    { upsert: true, new: true }
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
   // Update booking status based on payment type
   if (paymentType === 'donation') {
     const donation = await Donation.findByIdAndUpdate(
-      payment.referenceId,
+      referenceId,
       { paymentStatus: 'completed', paymentId: payment._id },
       { new: true }
     );
@@ -251,7 +276,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     );
   } else if (paymentType === 'pooja') {
     const booking = await PoojaBooking.findByIdAndUpdate(
-      payment.referenceId,
+      referenceId,
       {
         paymentStatus: 'completed',
         bookingStatus: 'confirmed',
@@ -276,7 +301,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     );
   } else if (paymentType === 'darshan') {
     const booking = await DarshanBooking.findByIdAndUpdate(
-      payment.referenceId,
+      referenceId,
       {
         paymentStatus: 'completed',
         bookingStatus: 'confirmed',

@@ -50,10 +50,28 @@ class PaymentService {
         data: order,
       };
     } catch (error) {
-      console.error('Error creating Razorpay order:', error.message);
+      console.error('Error creating Razorpay order:', error);
+      let errorMessage = 'Unknown Razorpay error';
+
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error?.description) {
+        errorMessage = error.error.description;
+      } else if (error?.error) {
+        errorMessage = JSON.stringify(error.error);
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        try {
+          errorMessage = JSON.stringify(error);
+        } catch (serializeErr) {
+          errorMessage = String(error);
+        }
+      }
+
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }

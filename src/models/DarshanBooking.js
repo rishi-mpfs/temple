@@ -104,6 +104,7 @@ darshanBookingSchema.index({ date: 1 });
 darshanBookingSchema.index({ bookingStatus: 1 });
 darshanBookingSchema.index({ paymentStatus: 1 });
 darshanBookingSchema.index({ createdAt: -1 });
+darshanBookingSchema.index({ bookingReference: 1 });
 
 // Pre-save hook to generate booking reference
 darshanBookingSchema.pre('save', async function(next) {

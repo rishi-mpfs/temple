@@ -29,7 +29,7 @@ const donationSchema = new mongoose.Schema(
     },
     cause: {
       type: String,
-      enum: ['general', 'maintenance', 'education', 'healthcare', 'community'],
+      trim: true,
       default: 'general',
     },
     message: {

@@ -1,15 +1,12 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Admin from 'src/models/Admin.js';
+import Admin from './src/models/Admin.js';
 
 dotenv.config();
 
 const seedAdmin = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB Connected');
 
     const adminExists = await Admin.findOne({ username: 'admin' });

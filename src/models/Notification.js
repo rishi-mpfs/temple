@@ -93,6 +93,7 @@ notificationSchema.index({ channel: 1 });
 notificationSchema.index({ recipientPhone: 1 });
 notificationSchema.index({ referenceId: 1 });
 notificationSchema.index({ createdAt: -1 });
+notificationSchema.index({ nextRetryAt: 1 });
 
 const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
 
