@@ -21,22 +21,38 @@ if (!cached) {
 }
 
 async function connectDB() {
-  if (cached.conn) {
-    return cached.conn;
+  // If we already have a fully connected mongoose instance, return it immediately
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
   }
 
-  if (!cached.promise) {
+  // If the promise is not active, or the connection readyState is disconnected (0),
+  // reset and start a new connection promise
+  if (!cached.promise || mongoose.connection.readyState === 0) {
     const opts = {
-      bufferCommands: false,
+      bufferCommands: true, // Allow Mongoose to buffer commands instead of failing instantly
+      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of waiting forever
+      maxPoolSize: 5, // Recommended limit for serverless functions to avoid connection exhaustion
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
       console.log('MongoDB connected successfully');
-      return mongoose;
+      return mongooseInstance;
+    }).catch((err) => {
+      cached.promise = null; // Clear cached promise on connection error
+      throw err;
     });
   }
-  cached.conn = await cached.promise;
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (error) {
+    cached.promise = null; // Clear cached promise if the awaited promise fails
+    throw error;
+  }
+
   return cached.conn;
 }
 
 export default connectDB;
+
